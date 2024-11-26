@@ -1,0 +1,73 @@
+import openai
+import tkinter as tk
+from tkinter import ttk
+from PIL import Image, ImageTk
+import os
+import time
+import requests
+from io import BytesIO
+from dotenv import load_dotenv
+
+load_dotenv()
+
+openai.api_key = os.getenv('OPENAI_API_KEY')
+
+class LogoGeneratorApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("UPT - Artist (Professional Logo and Image Generator)")
+        self.root.geometry("600x600")
+        
+        self.logo_type_label = ttk.Label(root, text="Select Logo Type:")
+        self.logo_type_label.pack(pady=10)
+
+        self.logo_type_dropdown = ttk.Combobox(root, values=["Abstract", "Minimalist", "Vintage", "Modern"])
+        self.logo_type_dropdown.pack(pady=10)
+
+        self.prompt_label = ttk.Label(root, text="Enter Prompt for Logo/Image:")
+        self.prompt_label.pack(pady=10)
+
+        self.prompt_entry = ttk.Entry(root, width=50)
+        self.prompt_entry.pack(pady=10)
+
+        self.submit_button = ttk.Button(root, text="Submit", command=self.generate_logo)
+        self.submit_button.pack(pady=20)
+
+        self.canvas = tk.Canvas(root, width=500, height=500)
+        self.canvas.pack()
+
+    def generate_logo(self):
+        prompt = self.prompt_entry.get()
+        if not prompt:
+            return
+
+        logo_type = self.logo_type_dropdown.get()
+        if logo_type:
+            prompt = f"{logo_type} logo: {prompt}"
+
+        response = openai.Image.create(
+            prompt=prompt,
+            n=1,
+            size="512x512"
+        )
+
+        image_url = response['data'][0]['url']
+        self.display_image(image_url)
+
+    def display_image(self, image_url):
+        response = requests.get(image_url)
+        img_data = response.content
+        image = Image.open(BytesIO(img_data))
+        image = image.resize((500, 500), Image.ANTIALIAS)
+        photo = ImageTk.PhotoImage(image)
+        
+        self.canvas.create_image(0, 0, anchor="nw", image=photo)
+        self.canvas.image = photo
+        
+        timestamp = int(time.time())
+        image.save(f"~/Desktop/{timestamp}.png")
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = LogoGeneratorApp(root)
+    root.mainloop()
